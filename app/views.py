@@ -23,7 +23,7 @@ def opp_list_by_pipeline(request):
      
     stages = get_stages_by_pipeline(pipeline)
     # print(stages)
-    if stages is None or stages['stages_list'] is [] or 'pipeline_id' not in stages:
+    if stages is None or not stages['stages_list']  or 'pipeline_id' not in stages:
         return Response({"error": "Error fetching stages from pipeline or wrong pipelineName or wrong stage"}, status=status.HTTP_404_NOT_FOUND)
     
     data = {"stages":{},"counts":{}}
@@ -33,7 +33,7 @@ def opp_list_by_pipeline(request):
 
     
     # search for opportunities with search and pipelineName query
-    opportunities = search_opp(stages['pipeline_id'],search)
+    opportunities = search_opp(stages['pipeline_id'],search,stage=None)
 
     if opportunities is None:
         return Response({"error": "Error fetching opportunities from pipeline"}, status=status.HTTP_404_NOT_FOUND)
@@ -41,6 +41,7 @@ def opp_list_by_pipeline(request):
  
     print(f"Total opportunities {len(opportunities)}")
     data_limit = False
+    opp_stage_name = ""
     for opportunity in opportunities:
         opp_data = {}
         for stage in stages['stages_list']:
@@ -105,7 +106,7 @@ def opp_list_by_stage(request):
     stages = get_stages_by_pipeline(pipelineName)
     # print(stages)
 
-    if stages is None or stages['stages_list'] is [] or 'pipeline_id' not in stages:
+    if stages is None or not stages['stages_list'] or 'pipeline_id' not in stages:
         return Response({"error": "Error fetching stages from pipeline or wrong pipelineName or wrong stage"}, status=status.HTTP_404_NOT_FOUND)
     
     pipeline_id = stages['pipeline_id']
