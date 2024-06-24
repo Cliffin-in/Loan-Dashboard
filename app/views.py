@@ -179,7 +179,7 @@ def search_opp(pipeline_id,search,stage):
     if search:
         querystring['q'] = str(search)
     if stage:
-        querystring['pipeline_stage_id']
+        querystring['pipeline_stage_id'] = stage
 
     opportunities = []
     count = 0 
