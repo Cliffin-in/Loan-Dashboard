@@ -118,34 +118,8 @@ def opp_list_by_stage(request):
 
     data = {received_stage:[]}
 
-    url = f"https://services.leadconnectorhq.com/opportunities/search"
-
-    token = check_and_refresh_token("NqyhE9rC0Op4IlSj2IIZ")
     
-    headers = {
-        "Authorization": f"Bearer {token}",
-        "Version": "2021-07-28",
-        "Accept": "application/json"
-    }
-    
-    querystring = {
-        "pipeline_id":pipeline_id,
-        "limit":limit,
-        "location_id":"NqyhE9rC0Op4IlSj2IIZ",
-        "pipeline_stage_id":pipelineStageId
-    }
-
-    if search:
-        querystring['q'] = str(search)
-
-    print(querystring)
-    opportunities = []
-    opp_search_response = requests.get(url, headers=headers, params=querystring)
-    if opp_search_response.status_code == 200:
-        opportunities.extend(opp_search_response.json()['opportunities'])
-        print("10 opportunities appended")
-    else:
-        opportunities=None
+    opportunities = search_opp(pipeline_id,search,pipelineStageId)
     
     if opportunities is None:
         return Response({"error": "Error fetching opportunities from pipeline"}, status=status.HTTP_404_NOT_FOUND)
@@ -175,7 +149,7 @@ def opp_list_by_stage(request):
                     opp_data['closingDueDate'] = date_str.date()
         
 
-        if len(data[received_stage]) < 10:
+        if len(data[received_stage]) < limit:
             data[received_stage].append(opp_data)
         else:
             break
@@ -184,7 +158,7 @@ def opp_list_by_stage(request):
 
 
 
-def search_opp(pipeline_id,search,limit=100):
+def search_opp(pipeline_id,search,stage):
 
     url = f"https://services.leadconnectorhq.com/opportunities/search"
 
@@ -198,13 +172,14 @@ def search_opp(pipeline_id,search,limit=100):
     
     querystring = {
         "pipeline_id":pipeline_id,
-        "limit":limit,
+        "limit":100,
         "location_id":"NqyhE9rC0Op4IlSj2IIZ"
     }
 
     if search:
         querystring['q'] = str(search)
-
+    if stage:
+        querystring['pipeline_stage_id']
 
     opportunities = []
     count = 0 
