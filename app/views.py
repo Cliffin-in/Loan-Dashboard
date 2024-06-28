@@ -14,17 +14,49 @@ load_dotenv()
 
 
 @api_view(['GET'])
+def list_pipelines(request):
+    url = "https://services.leadconnectorhq.com/opportunities/pipelines"
+
+    querystring = {"locationId":"NqyhE9rC0Op4IlSj2IIZ"}
+    
+
+    token = check_and_refresh_token("NqyhE9rC0Op4IlSj2IIZ")
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Version": "2021-07-28",
+        "Accept": "application/json"
+    }
+
+    response = requests.get(url, headers=headers, params=querystring)
+    
+    data = []
+    if response.status_code == 200:
+        # print(response.json())
+        res = response.json()['pipelines']
+        for each_res in res:
+            each_dict = {}
+            each_dict['id'] = each_res['id']
+            each_dict['name'] = each_res['name']
+            data.append(each_dict)
+
+        return Response({'pipelines':data},status=status.HTTP_200_OK)
+    
+    else:
+        print("error fetching pipelines")
+        return Response({"message":"error fetching pipelines list"},status=status.HTTP_404_NOT_FOUND)
+
+@api_view(['GET'])
 def opp_list_by_pipeline(request):
     search = request.GET.get('search',None)
-    pipeline = request.GET.get('pipelineName')
+    pipelineId = request.GET.get('pipelineId')
 
-    if  not pipeline:
-        return Response({"error": "Missing 'pipelineName' parameter"}, status=status.HTTP_400_BAD_REQUEST)
+    if  not pipelineId:
+        return Response({"error": "Missing 'pipelineId' parameter"}, status=status.HTTP_400_BAD_REQUEST)
      
-    stages = get_stages_by_pipeline(pipeline)
+    stages = get_stages_by_pipeline(pipelineId)
     # print(stages)
-    if stages is None or not stages['stages_list']  or 'pipeline_id' not in stages:
-        return Response({"error": "Error fetching stages from pipeline or wrong pipelineName or wrong stage"}, status=status.HTTP_404_NOT_FOUND)
+    if stages is None or not stages['stages_list'] or 'pipelineName' not in stages:
+        return Response({"error": "Error fetching stages from pipeline or wrong pipelineId"}, status=status.HTTP_404_NOT_FOUND)
     
     data = {"stages":{},"counts":{}}
     for stage in stages['stages_list']:
@@ -32,8 +64,8 @@ def opp_list_by_pipeline(request):
         data['counts'][stage['name']] = 0
 
     
-    # search for opportunities with search and pipelineName query
-    opportunities = search_opp(stages['pipeline_id'],search,stage=None)
+    # search for opportunities with search and pipelineId query
+    opportunities = search_opp(pipelineId,search,stage=None)
 
     if opportunities is None:
         return Response({"error": "Error fetching opportunities from pipeline"}, status=status.HTTP_404_NOT_FOUND)
@@ -47,21 +79,19 @@ def opp_list_by_pipeline(request):
         for stage in stages['stages_list']:
             if stage['stage_id'] == opportunity['pipelineStageId']:
                 opp_stage_name = stage['name']
-                if opp_stage_name == "Closing in 7 days":
-                    print(opportunity['name'])
         # print(opp_stage_name)
         if opp_stage_name:
             # print(opportunity['name'])
             data['counts'][opp_stage_name] += 1
         
         if data_limit is False:
-            opp_data['id'] = opportunity['id']
+            opp_data['id'] = pipelineId
             opp_data['name'] = opportunity['name']
             opp_data['contactName'] = opportunity['contact']['name']
             opp_data['source'] = opportunity['source'] if 'source' in opportunity else None
             opp_data['monetaryValue'] = opportunity['monetaryValue'] if 'monetaryValue' in opportunity else 0
             opp_data['pipelineStage'] = opp_stage_name
-            opp_data['pipelineName'] = pipeline
+            opp_data['pipelineName'] = stages['pipelineName']
             opp_data['opportunityStage'] = None
             opp_data['closingDueDate'] = None
 
@@ -96,20 +126,20 @@ def opp_list_by_stage(request):
     limit = request.GET.get('limit',10)
     offset = request.GET.get('offset',0)
     received_stage = request.GET.get('stage')
-    pipelineName = request.GET.get('pipelineName')
+    pipelineId = request.GET.get('pipelineId')
 
-    if not received_stage or not pipelineName:
-        return Response({"error": "Missing 'stage' or 'pipelineName' parameter"}, status=status.HTTP_400_BAD_REQUEST)
+    if not received_stage or not pipelineId:
+        return Response({"error": "Missing 'stage' or 'pipelineId' parameter"}, status=status.HTTP_400_BAD_REQUEST)
     
     offset = int(offset)
     limit = int(limit)
-    stages = get_stages_by_pipeline(pipelineName)
+    stages = get_stages_by_pipeline(pipelineId)
     # print(stages)
 
-    if stages is None or not stages['stages_list'] or 'pipeline_id' not in stages:
-        return Response({"error": "Error fetching stages from pipeline or wrong pipelineName or wrong stage"}, status=status.HTTP_404_NOT_FOUND)
+    if stages is None or not stages['stages_list'] or 'pipelineName' not in stages:
+        return Response({"error": "Error fetching stages from pipeline or wrong pipelineId or wrong stage"}, status=status.HTTP_404_NOT_FOUND)
     
-    pipeline_id = stages['pipeline_id']
+    pipelineName = stages['pipelineName']
     pipelineStageId = ""
     for stage in stages['stages_list']:
         if stage['name'] == received_stage:
@@ -120,7 +150,7 @@ def opp_list_by_stage(request):
     data = {received_stage:[]}
 
     
-    opportunities = search_opp(pipeline_id,search,pipelineStageId)
+    opportunities = search_opp(pipelineId,search,pipelineStageId)
     
     if opportunities is None:
         return Response({"error": "Error fetching opportunities from pipeline"}, status=status.HTTP_404_NOT_FOUND)
@@ -130,7 +160,7 @@ def opp_list_by_stage(request):
     for opportunity in opportunities[offset:]:
         opp_data = {}
         
-        opp_data['id'] = opportunity['id']
+        opp_data['id'] = pipelineId
         opp_data['name'] = opportunity['name']
         opp_data['contactName'] = opportunity['contact']['name']
         opp_data['source'] = opportunity['source'] if 'source' in opportunity else None
@@ -205,7 +235,7 @@ def search_opp(pipeline_id,search,stage):
     return opportunities
 
 
-def get_stages_by_pipeline(pipelineName):
+def get_stages_by_pipeline(id):
     url = "https://services.leadconnectorhq.com/opportunities/pipelines"
 
     querystring = {"locationId":"NqyhE9rC0Op4IlSj2IIZ"}
@@ -225,8 +255,8 @@ def get_stages_by_pipeline(pipelineName):
         # print(response.json())
         res = response.json()['pipelines']
         for pipeline in res:
-            if pipeline['name']==pipelineName:
-                data['pipeline_id'] = pipeline['id']
+            if pipeline['id']==id:
+                data['pipelineName'] = pipeline['name']
                 for stage in pipeline['stages']:
                     data['stages_list'].append({"stage_id":stage['id'],"name":stage['name']})
 
