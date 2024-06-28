@@ -85,7 +85,7 @@ def opp_list_by_pipeline(request):
             data['counts'][opp_stage_name] += 1
         
         if data_limit is False:
-            opp_data['id'] = pipelineId
+            opp_data['id'] = opportunity['id']
             opp_data['name'] = opportunity['name']
             opp_data['contactName'] = opportunity['contact']['name']
             opp_data['source'] = opportunity['source'] if 'source' in opportunity else None
@@ -144,10 +144,12 @@ def opp_list_by_stage(request):
     for stage in stages['stages_list']:
         if stage['name'] == received_stage:
             pipelineStageId = stage['stage_id']
-            
+
+    if pipelineStageId == "":
+        return Response({"message":"wrong stage name"},status=status.HTTP_404_NOT_FOUND)  
 
 
-    data = {received_stage:[]}
+    data = []
 
     
     opportunities = search_opp(pipelineId,search,pipelineStageId)
@@ -160,7 +162,7 @@ def opp_list_by_stage(request):
     for opportunity in opportunities[offset:]:
         opp_data = {}
         
-        opp_data['id'] = pipelineId
+        opp_data['id'] = opportunity['id']
         opp_data['name'] = opportunity['name']
         opp_data['contactName'] = opportunity['contact']['name']
         opp_data['source'] = opportunity['source'] if 'source' in opportunity else None
@@ -180,17 +182,17 @@ def opp_list_by_stage(request):
                     opp_data['closingDueDate'] = date_str.date()
         
 
-        if len(data[received_stage]) < limit:
-            data[received_stage].append(opp_data)
+        if len(data) < limit:
+            data.append(opp_data)
         else:
             break
 
-    return Response({"data":data},status=status.HTTP_200_OK)
+    return Response({received_stage:data},status=status.HTTP_200_OK)
 
 
 
 def search_opp(pipeline_id,search,stage):
-
+    print(f"stage is {stage}")
     url = f"https://services.leadconnectorhq.com/opportunities/search"
 
     token = check_and_refresh_token("NqyhE9rC0Op4IlSj2IIZ")
