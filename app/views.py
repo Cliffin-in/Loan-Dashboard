@@ -80,9 +80,6 @@ def opp_list_by_pipeline(request):
             if stage['stage_id'] == opportunity['pipelineStageId']:
                 opp_stage_name = stage['name']
         # print(opp_stage_name)
-        if opp_stage_name:
-            # print(opportunity['name'])
-            data['counts'][opp_stage_name] += 1
         
         if data_limit is False:
             opp_data['id'] = opportunity['id']
@@ -104,10 +101,14 @@ def opp_list_by_pipeline(request):
                         date_str = datetime.fromtimestamp(field['fieldValueDate']/1000)
                         opp_data['closingDueDate'] = date_str.date()
             
-            
-        if len(data['stages'][opp_stage_name]) < 10:
-            # print(opp_data)
-            data['stages'][opp_stage_name].append(opp_data)
+        
+        if opp_data['opportunityStage'] is None:
+            pass
+        else:
+            data['counts'][opp_stage_name] += 1
+            if len(data['stages'][opp_stage_name]) < 10:
+                # print(opp_data)
+                data['stages'][opp_stage_name].append(opp_data)
             
         all_stages_limit = False
         for stage in stages['stages_list']:
@@ -181,11 +182,13 @@ def opp_list_by_stage(request):
                     date_str = datetime.fromtimestamp(field['fieldValueDate']/1000)
                     opp_data['closingDueDate'] = date_str.date()
         
-
-        if len(data) < limit:
-            data.append(opp_data)
+        if opp_data['opportunityStage'] is None:
+            pass
         else:
-            break
+            if len(data) < limit:
+                data.append(opp_data)
+            else:
+                break
 
     return Response({received_stage:data},status=status.HTTP_200_OK)
 
