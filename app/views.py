@@ -47,7 +47,7 @@ def list_pipelines(request):
 
 @api_view(['GET'])
 def opp_list_by_pipeline(request):
-    search = request.GET.get('search',None)
+    search = request.GET.get('searchId',None)
     pipelineId = request.GET.get('pipelineId')
 
     if  not pipelineId:
@@ -122,7 +122,7 @@ def opp_list_by_pipeline(request):
 @api_view(['GET'])
 def opp_list_by_stage(request):
 
-    search = request.GET.get('search',None)
+    search = request.GET.get('searchId',None)
     limit = request.GET.get('limit',10)
     offset = request.GET.get('offset',0)
     received_stage = request.GET.get('stage')
@@ -210,7 +210,7 @@ def search_opp(pipeline_id,search,stage):
     }
 
     if search:
-        querystring['q'] = str(search)
+        querystring['id'] = search
     if stage:
         querystring['pipeline_stage_id'] = stage
 
