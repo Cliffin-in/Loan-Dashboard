@@ -10,6 +10,7 @@ from .models import AccessToken
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework import status
+import time
 load_dotenv()
 
 
@@ -154,13 +155,19 @@ def opp_list_by_stage(request):
 
     
     opportunities = search_opp(pipelineId,search,pipelineStageId)
-    
+
     if opportunities is None:
         return Response({"error": "Error fetching opportunities from pipeline"}, status=status.HTTP_404_NOT_FOUND)
 
+
+    needed_opportunities = [o for o in opportunities if o['customFields'] for f in o['customFields']  if f['id'] ==  "Bfnik1BkCUNhvDPWJrvI"]
+    
     
     # print(offset)
-    for opportunity in opportunities[offset:]:
+    count=0
+    not_count = 0
+    print("----------------------------------------------------------------------")
+    for opportunity in needed_opportunities[offset:]:
         opp_data = {}
         
         opp_data['id'] = opportunity['id']
@@ -181,10 +188,14 @@ def opp_list_by_stage(request):
                 if field['id'] == "TQXTPRZqpXKMy9aaP42A":
                     date_str = datetime.fromtimestamp(field['fieldValueDate']/1000)
                     opp_data['closingDueDate'] = date_str.date()
-        
+        # print(opp_data['opportunityStage'])
         if opp_data['opportunityStage'] is None:
-            pass
+            print(opportunity['id'])
+            not_count+=1
+            # print(f"not added to list is {not_count}")
         else:
+            count+=1
+            # print(count)
             if len(data) < limit:
                 data.append(opp_data)
             else:
@@ -222,20 +233,42 @@ def search_opp(pipeline_id,search,stage):
     while url:
         print(f"url is {url}")
         print(querystring)
-        opp_search_response = requests.get(url, headers=headers, params=querystring)
+        
+        # to handle requests exceeded limit 
+        max_retries = 5
+        retry_delay = 10  
 
-        if opp_search_response.status_code == 200:
-            opportunities.extend(opp_search_response.json()['opportunities'])
-            count+=len(opp_search_response.json()['opportunities'])
-            print(f"Appended {count} opportunities to list")
-            url = opp_search_response.json()['meta']['nextPageUrl']
+        for attempt in range(max_retries):
+            opp_search_response = requests.get(url, headers=headers, params=querystring)
+            if opp_search_response.status_code == 200:
+                if 'opportunities' in opp_search_response.json():
+                    opportunities.extend(opp_search_response.json()['opportunities'])
+                    count+=len(opp_search_response.json()['opportunities'])
+                    print(f"Appended {count} opportunities to list")
+                else:
+                    print("NO 'opportunities key in response dict")
 
-            if url:                
-                # Update querystring for the next request
-                querystring={}
-        else:
-           print(f"Error: {opp_search_response.json()}")
-           return None
+                url = opp_search_response.json()['meta']['nextPageUrl']
+
+                if url:                
+                    # Update querystring for the next request
+                    querystring={}
+
+                break
+            elif opp_search_response.status_code == 429:
+                print(f"Rate limit exceeded. Retrying in {retry_delay} seconds... (Attempt {attempt + 1}/{max_retries})")
+                time.sleep(retry_delay)
+                retry_delay *= 2 
+            else:
+                print(f"Unexpected error: {opp_search_response.status_code}")
+                try:
+                    print(opp_search_response.json())
+                except ValueError:
+                    print("Response content is not valid JSON")
+                    time.sleep(retry_delay)
+                    retry_delay *= 2
+                print(opp_search_response.headers)
+
     
     return opportunities
 
@@ -253,42 +286,38 @@ def get_stages_by_pipeline(id):
         "Accept": "application/json"
     }
 
-    response = requests.get(url, headers=headers, params=querystring)
-    
+    max_retries = 5
+    retry_delay = 10  
     data = {"stages_list":[]}
-    if response.status_code == 200:
-        # print(response.json())
-        res = response.json()['pipelines']
-        for pipeline in res:
-            if pipeline['id']==id:
-                data['pipelineName'] = pipeline['name']
-                for stage in pipeline['stages']:
-                    data['stages_list'].append({"stage_id":stage['id'],"name":stage['name']})
+    for attempt in range(max_retries):
+        response = requests.get(url, headers=headers, params=querystring)
+        if response.status_code == 200:
+            # print(response.json())
+            res = response.json()['pipelines']
+            for pipeline in res:
+                if pipeline['id']==id:
+                    data['pipelineName'] = pipeline['name']
+                    for stage in pipeline['stages']:
+                        data['stages_list'].append({"stage_id":stage['id'],"name":stage['name']})
 
-        # print(data)
-        return data
-    else:
-        print(f"Error fetching pipeline stages {response.status_code}")
-        return None
+            # print(data)
+            return data
+        elif response.status_code == 429:
+            print(f"Rate limit exceeded. Retrying in {retry_delay} seconds... (Attempt {attempt + 1}/{max_retries})")
+            time.sleep(retry_delay)
+            retry_delay *= 2 
+        else:
+            print(f"Unexpected error: {response.status_code}")
+            try:
+                print(response.json())
+            except ValueError:
+                print("Response content is not valid JSON")
+                time.sleep(retry_delay)
+                retry_delay *= 2
+            print(response.headers)
 
-def get_contact_name(id):
-    url = f"https://services.leadconnectorhq.com/contacts/{id}"
-
-    token = check_and_refresh_token("NqyhE9rC0Op4IlSj2IIZ")
-    headers = {
-        "Authorization": f"Bearer {token}",
-        "Version": "2021-07-28",
-        "Accept": "application/json"
-    }
-
-    response = requests.get(url, headers=headers)
-
-    if response.status_code == 200:
-        return response.json()['contact']['name']
     
-    else:
-        print(response.status_code)
-        return None
+    return None
 
 def check_and_refresh_token(location_id): 
     token = get_object_or_404(AccessToken, location_id=location_id) 
