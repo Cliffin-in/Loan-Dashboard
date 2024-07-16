@@ -207,78 +207,48 @@ load_dotenv()
     
 
 @api_view(['GET'])
-def opp_by_id(request):
+def opp_by_name(request):
+    opp_name = request.GET.get('opportunityName')
 
-    opp_id = request.GET.get('opportunityId')
-
-    if not opp_id:
-      return Response({"error": "Missing 'opportunityId' parameter"}, status=status.HTTP_400_BAD_REQUEST)
-
-    url = f"https://services.leadconnectorhq.com/opportunities/search"
-
-    token = check_and_refresh_token("NqyhE9rC0Op4IlSj2IIZ")
+    if not opp_name:
+      return Response({"error": "Missing 'opportunityName' parameter"}, status=status.HTTP_400_BAD_REQUEST)
     
-    headers = {
-        "Authorization": f"Bearer {token}",
-        "Version": "2021-07-28",
-        "Accept": "application/json"
-    }
+    opportunities = search_opp(opp_name)
+
+    if opportunities is None:
+        return Response({"error": "Error fetching opportunities from location"}, status=status.HTTP_404_NOT_FOUND)
     
-    querystring = {
-        "limit":100,
-        "location_id":"NqyhE9rC0Op4IlSj2IIZ",
-    }
-    
-    if opp_id:
-        querystring['id'] = opp_id
+    opportunities_with_name = []
+    for opportunity in opportunities:
+        opp_data = {}
+        if opp_name.lower() in opportunity['name'].lower():
+            opp_data['id'] = opportunity['id']
+            opp_data['name'] = opportunity['name']
+            opp_data['contactName'] = opportunity['contact']['name']
+            opp_data['source'] = opportunity['source'] if 'source' in opportunity else None
+            opp_data['monetaryValue'] = opportunity['monetaryValue'] if 'monetaryValue' in opportunity else 0
+            opp_data['opportunityStage'] = None
+            opp_data['closingDueDate'] = None
 
-    opp_search_response = requests.get(url, headers=headers, params=querystring)
-    if opp_search_response.status_code == 200:
-        if 'opportunities' in opp_search_response.json():
-            opp_data = {}
-            print(f"Succefuly fetched opp with id {opp_id}")
-           
-            opportunities = opp_search_response.json()['opportunities']
+            if 'customFields' in opportunity and opportunity['customFields'] != []:
+                for field in opportunity['customFields']:
+                    if field['id'] == "Bfnik1BkCUNhvDPWJrvI":
+                        opp_data['opportunityStage'] = field['fieldValueString']
 
-            if opportunities != []:
-                opportunity = opportunities[0]
-                opp_data['id'] = opportunity['id']
-                opp_data['name'] = opportunity['name']
-                opp_data['contactName'] = opportunity['contact']['name']
-                opp_data['source'] = opportunity['source'] if 'source' in opportunity else None
-                opp_data['monetaryValue'] = opportunity['monetaryValue'] if 'monetaryValue' in opportunity else 0
-                opp_data['opportunityStage'] = None
-                opp_data['closingDueDate'] = None
-
-                if opportunity['customFields'] != []:
-                    for field in opportunity['customFields']:
-                        if field['id'] == "Bfnik1BkCUNhvDPWJrvI":
-                            opp_data['opportunityStage'] = field['fieldValueString']
-
-                        if field['id'] == "TQXTPRZqpXKMy9aaP42A":
-                            date_str = datetime.fromtimestamp(field['fieldValueDate']/1000)
-                            opp_data['closingDueDate'] = date_str.date()
+                    if field['id'] == "TQXTPRZqpXKMy9aaP42A":
+                        date_str = datetime.fromtimestamp(field['fieldValueDate']/1000)
+                        opp_data['closingDueDate'] = date_str.date()
 
 
-                pipeline_details = get_pipeline_name(opportunity['pipelineId'],opportunity['pipelineStageId'])
-                if pipeline_details:
-                    opp_data['pipelineStage'] = pipeline_details['stage']
-                    opp_data['pipelineName'] = pipeline_details['pipeline']
+            pipeline_details = get_pipeline_name(opportunity['pipelineId'],opportunity['pipelineStageId'])
+            if pipeline_details:
+                opp_data['pipelineStage'] = pipeline_details['stage']
+                opp_data['pipelineName'] = pipeline_details['pipeline']
 
+            opportunities_with_name.append(opp_data)
 
-            return Response({"opportunity":opp_data},status=200)
-        else:
-            print("NO 'opportunities key in response dict")
- 
-    else:
-        print(f"Unexpected error: {opp_search_response.status_code}")
-        try:
-            print(opp_search_response.json())
-        except ValueError:
-            print("Response content is not valid JSON")
-        print(opp_search_response.headers)
-
-        return None
+    return Response({"opportunities":opportunities_with_name},status=200)
+       
 
 def get_pipeline_name(id,stage):
     url = "https://services.leadconnectorhq.com/opportunities/pipelines"
@@ -312,72 +282,69 @@ def get_pipeline_name(id,stage):
         return False
     
 
-# def search_opp(pipeline_id,search,stage):
-#     print(f"stage is {stage}")
-#     url = f"https://services.leadconnectorhq.com/opportunities/search"
+def search_opp(search):
+    url = f"https://services.leadconnectorhq.com/opportunities/search"
 
-#     token = check_and_refresh_token("NqyhE9rC0Op4IlSj2IIZ")
+    token = check_and_refresh_token("NqyhE9rC0Op4IlSj2IIZ")
     
-#     headers = {
-#         "Authorization": f"Bearer {token}",
-#         "Version": "2021-07-28",
-#         "Accept": "application/json"
-#     }
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Version": "2021-07-28",
+        "Accept": "application/json"
+    }
     
-#     querystring = {
-#         "pipeline_id":pipeline_id,
-#         "limit":100,
-#         "location_id":"NqyhE9rC0Op4IlSj2IIZ"
-#     }
+    querystring = {
+        "limit":100,
+        "location_id":"NqyhE9rC0Op4IlSj2IIZ",
+        "pipeline_id":"kk0EeBcUijsZJG1vJyn9"
+    }
+    
+    if search:
+        querystring['q'] = search
 
-#     if search:
-#         querystring['id'] = search
-#     if stage:
-#         querystring['pipeline_stage_id'] = stage
-
-#     opportunities = []
-#     count = 0 
-#     while url:
-#         print(f"url is {url}")
-#         print(querystring)
+    opportunities = []
+    count = 0 
+    while url:
+        print(f"url is {url}")
+        print(querystring)
         
-#         # to handle requests exceeded limit 
-#         max_retries = 5
-#         retry_delay = 10  
+        # to handle requests exceeded limit 
+        max_retries = 5
+        retry_delay = 10  
 
-#         for attempt in range(max_retries):
-#             opp_search_response = requests.get(url, headers=headers, params=querystring)
-#             if opp_search_response.status_code == 200:
-#                 if 'opportunities' in opp_search_response.json():
-#                     opportunities.extend(opp_search_response.json()['opportunities'])
-#                     count+=len(opp_search_response.json()['opportunities'])
-#                     print(f"Appended {count} opportunities to list")
-#                 else:
-#                     print("NO 'opportunities key in response dict")
+        for attempt in range(max_retries):
+            opp_search_response = requests.get(url, headers=headers, params=querystring)
+            if opp_search_response.status_code == 200:
+                if 'opportunities' in opp_search_response.json():
+                    opportunities.extend(opp_search_response.json()['opportunities'])
+                    count+=len(opp_search_response.json()['opportunities'])
+                    print(f"Appended {count} opportunities to list")
+                else:
+                    print("NO 'opportunities key in response dict")
 
-#                 url = opp_search_response.json()['meta']['nextPageUrl']
+                url = opp_search_response.json()['meta']['nextPageUrl']
 
-#                 if url:                
-#                     # Update querystring for the next request
-#                     querystring={}
+                if url:                
+                    # Update querystring for the next request
+                    querystring={}
 
-#                 break
-#             elif opp_search_response.status_code == 429:
-#                 print(f"Rate limit exceeded. Retrying in {retry_delay} seconds... (Attempt {attempt + 1}/{max_retries})")
-#                 time.sleep(retry_delay)
-#                 retry_delay *= 2 
-#             else:
-#                 print(f"Unexpected error: {opp_search_response.status_code}")
-#                 try:
-#                     print(opp_search_response.json())
-#                 except ValueError:
-#                     print("Response content is not valid JSON")
-#                     time.sleep(retry_delay)
-#                     retry_delay *= 2
-#                 print(opp_search_response.headers)
+                break
+            elif opp_search_response.status_code == 429:
+                print(f"Rate limit exceeded. Retrying in {retry_delay} seconds... (Attempt {attempt + 1}/{max_retries})")
+                time.sleep(retry_delay)
+                retry_delay *= 2 
+            else:
+                print(f"Unexpected error: {opp_search_response.status_code}")
+                try:
+                    print(opp_search_response.json())
+                except ValueError:
+                    print("Response content is not valid JSON")
+                    time.sleep(retry_delay)
+                    retry_delay *= 2
+                print(opp_search_response.headers)
 
     
-#     return opportunities
+    return opportunities
 
 
 # def get_stages_by_pipeline(id):

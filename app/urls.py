@@ -7,5 +7,5 @@ urlpatterns = [
     # path('opp-by-pipeline',opp_list_by_pipeline),
     # path('opp-by-stage',opp_list_by_stage),
     # path('list-pipelines',list_pipelines)
-    path('opp-by-id',opp_by_id)
+    path('opp-by-name',opp_by_name)
 ]
