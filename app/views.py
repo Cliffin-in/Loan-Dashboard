@@ -267,6 +267,7 @@ class CreateAccessToken(APIView):
                     "user_type": "Location",
                     
                 }
+                print(payload)
             
                 headers = {
                     "Content-Type": "application/x-www-form-urlencoded",
