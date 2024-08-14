@@ -167,6 +167,7 @@ def opportunities_webhook(request):
             "kk0EeBcUijsZJG1vJyn9":"Processing"
         }
         data = request.data
+        print(request.data)
 
         req_type = data['type']
 
