@@ -4,6 +4,7 @@ import requests
 import time
 from celery import shared_task
 from .utils import check_and_refresh_token,get_assigned_user,get_pipeline_name
+import pytz
 
 @shared_task(bind=True, max_retries=30, default_retry_delay=10)
 def fetch_opportunities(self, *args):
@@ -38,41 +39,49 @@ def fetch_opportunities(self, *args):
 
             total_opp_instance.save()
             
-        # if opp['pipelineId'] == "kk0EeBcUijsZJG1vJyn9":
-        #     opp_instance, created = ProcessingOpportunities.objects.get_or_create(opp_id=opp['id'])
+        if opp['pipelineId'] == "kk0EeBcUijsZJG1vJyn9":
+            opp_instance, created = ProcessingOpportunities.objects.get_or_create(opp_id=opp['id'])
             
-        #     opp_instance.opp_name = opp['name']
-        #     opp_instance.pipeline_id = opp['pipelineId']
-        #     opp_instance.stage_id = opp['pipelineStageId']
-        #     opp_instance.assigned_user_id = opp['assignedTo']
-        #     opp_instance.monetary_value = opp['monetaryValue']
-        #     opp_instance.actual_closed_date = opp['lastStageChangeAt']
+            opp_instance.opp_name = opp['name']
+            opp_instance.pipeline_id = opp['pipelineId']
+            opp_instance.stage_id = opp['pipelineStageId']
+            opp_instance.assigned_user_id = opp['assignedTo']
+            opp_instance.monetary_value = opp['monetaryValue']
+
+            location_timezone = "America/New_York"
+            target_timezone = pytz.timezone(location_timezone)
+            date_str = opp['lastStageChangeAt']
+            date_datetime = datetime.fromisoformat(date_str)
+            date_in_timezone = date_datetime.astimezone(target_timezone)
+            date_required = date_in_timezone.strftime("%Y-%m-%d")
+            opp_instance.actual_closed_date = date_required
+           
             
-        #     pipeline_details = get_pipeline_name(opp['pipelineId'],opp['pipelineStageId'])
-        #     if pipeline_details:
-        #         opp_instance.stage_name = pipeline_details['stage']
-        #         opp_instance.pipeline_name = pipeline_details['pipeline']
+            pipeline_details = get_pipeline_name(opp['pipelineId'],opp['pipelineStageId'])
+            if pipeline_details:
+                opp_instance.stage_name = pipeline_details['stage']
+                opp_instance.pipeline_name = pipeline_details['pipeline']
             
-        #     assigned_name = get_assigned_user(opp['assignedTo'])
-        #     if assigned_name:
-        #         opp_instance.assigned_user_name = assigned_name
+            assigned_name = get_assigned_user(opp['assignedTo'])
+            if assigned_name:
+                opp_instance.assigned_user_name = assigned_name
 
-        #     if 'customFields' in opp and opp['customFields'] != []:
-        #         for field in opp['customFields']:
-        #             if field['id'] == "5hOAqmsYZs4U9e8K4EsJ":
-        #                 opp_instance.loan_type = field['fieldValueArray'][0]
+            if 'customFields' in opp and opp['customFields'] != []:
+                for field in opp['customFields']:
+                    if field['id'] == "5hOAqmsYZs4U9e8K4EsJ":
+                        opp_instance.loan_type = field['fieldValueArray'][0]
 
-        #             if field['id'] == "UE5SWIOEeAjs8SGnNAUr":
-        #                 opp_instance.explanation = field['fieldValueString']
+                    if field['id'] == "UE5SWIOEeAjs8SGnNAUr":
+                        opp_instance.explanation = field['fieldValueString']
 
-        #             if field['id'] == "tF6ULs19sWBsNp23jjEF":
-        #                 opp_instance.how_many_times_lender_change = field['fieldValueString']
+                    if field['id'] == "tF6ULs19sWBsNp23jjEF":
+                        opp_instance.how_many_times_lender_change = field['fieldValueString']
 
-        #             if field['id'] == "TQXTPRZqpXKMy9aaP42A":
-        #                 date_str = datetime.fromtimestamp(field['fieldValueDate']/1000)
-        #                 opp_instance.close_due_date = date_str.date()
+                    if field['id'] == "TQXTPRZqpXKMy9aaP42A":
+                        date_str = datetime.fromtimestamp(field['fieldValueDate']/1000)
+                        opp_instance.close_due_date = date_str.date()
 
-        #     opp_instance.save()
+            opp_instance.save()
 
     return "succesfully saved to db"
 

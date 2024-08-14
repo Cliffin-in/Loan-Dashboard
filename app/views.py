@@ -15,7 +15,7 @@ from .tasks import fetch_opportunities
 from .utils import get_assigned_user,get_pipeline_name,check_and_refresh_token
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
-
+import pytz
 load_dotenv()
 
 
@@ -215,8 +215,14 @@ def opportunities_webhook(request):
                 
                 get_opp_details = get_opp(data['id'])
                 if get_opp_details:
-
-                    opp_instance.actual_closed_date = get_opp_details['lastStageChangeAt']
+                    
+                    location_timezone = "America/New_York"
+                    target_timezone = pytz.timezone(location_timezone)
+                    date_str = get_opp_details['lastStageChangeAt'] 
+                    date_datetime = datetime.fromisoformat(date_str)
+                    date_in_timezone = date_datetime.astimezone(target_timezone)
+                    date_required = date_in_timezone.strftime("%Y-%m-%d")
+                    opp_instance.actual_closed_date = date_required
 
                     if 'customFields' in get_opp_details and get_opp_details['customFields'] != []:
                         for field in get_opp_details['customFields']:
