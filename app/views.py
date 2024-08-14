@@ -187,6 +187,11 @@ def opportunities_webhook(request):
                     total_opp_instance.pipeline_name = pipeline_details['pipeline']
 
                 total_opp_instance.save()
+
+                if created:
+                    print("created opp")
+                else:
+                    print("updated opp")
             
 
             if data['pipelineId'] == "kk0EeBcUijsZJG1vJyn9":
@@ -229,6 +234,11 @@ def opportunities_webhook(request):
                                 opp_instance.close_due_date = date_str.date()
 
                 opp_instance.save()
+
+                if created:
+                    print("created opp")
+                else:
+                    print("updated opp")
             print("succesfully updated db")
             return Response({"message":"succesfully updated db"},status=200)
         
