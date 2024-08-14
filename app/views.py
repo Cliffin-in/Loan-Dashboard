@@ -230,7 +230,7 @@ def opportunities_webhook(request):
                                 opp_instance.how_many_times_lender_change = field['fieldValue']
 
                             if field['id'] == "TQXTPRZqpXKMy9aaP42A":
-                                date_str = datetime.fromtimestamp(field['fieldValue']/1000)
+                                date_str = field['fieldValue']
                                 opp_instance.close_due_date = date_str.date()
 
                 opp_instance.save()
