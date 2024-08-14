@@ -79,11 +79,11 @@ WSGI_APPLICATION = 'opportunity_project.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'lfg_dashboard',
+        'ENGINE': 'django.db.backends.postgresql_psycopg2',
+        'NAME': 'lfg_db',
         'USER': 'postgres',
         'PASSWORD': '1234',
-        'HOST': 'localhost',
+        'HOST': 'rd-database-2.cpkes8y0a6wt.us-west-1.rds.amazonaws.com',
         'PORT': '5432'
     }
 }
@@ -134,3 +134,13 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 
 CORS_ORIGIN_ALLOW_ALL = True
+
+
+CELERY_BROKER_URL = 'redis://127.0.0.1:6379'
+result_backend = 'django-db'
+timezone = 'UTC'
+accept_content = ['application/json']
+result_serializer = 'json'
+task_serializer = 'json'
+broker_connection_retry_on_startup = True
+

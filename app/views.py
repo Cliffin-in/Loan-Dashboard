@@ -6,281 +6,17 @@ from datetime import datetime,timedelta
 from rest_framework.serializers import ValidationError
 from django.shortcuts import get_object_or_404
 from rest_framework.decorators import api_view
-from .models import AccessToken
+from .models import *
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework import status
 import time
+from .tasks import fetch_opportunities
+from .utils import get_assigned_user,get_pipeline_name,check_and_refresh_token
 load_dotenv()
 
 
-# @api_view(['GET'])
-# def list_pipelines(request):
-#     url = "https://services.leadconnectorhq.com/opportunities/pipelines"
 
-#     querystring = {"locationId":"NqyhE9rC0Op4IlSj2IIZ"}
-    
-
-#     token = check_and_refresh_token("NqyhE9rC0Op4IlSj2IIZ")
-#     headers = {
-#         "Authorization": f"Bearer {token}",
-#         "Version": "2021-07-28",
-#         "Accept": "application/json"
-#     }
-
-#     response = requests.get(url, headers=headers, params=querystring)
-    
-#     data = []
-#     if response.status_code == 200:
-#         # print(response.json())
-#         res = response.json()['pipelines']
-#         for each_res in res:
-#             each_dict = {}
-#             each_dict['id'] = each_res['id']
-#             each_dict['name'] = each_res['name']
-#             data.append(each_dict)
-
-#         return Response({'pipelines':data},status=status.HTTP_200_OK)
-    
-#     else:
-#         print("error fetching pipelines")
-#         return Response({"message":"error fetching pipelines list"},status=status.HTTP_404_NOT_FOUND)
-
-# @api_view(['GET'])
-# def opp_list_by_pipeline(request):
-#     search = request.GET.get('searchId',None)
-#     pipelineId = request.GET.get('pipelineId')
-
-#     if  not pipelineId:
-#         return Response({"error": "Missing 'pipelineId' parameter"}, status=status.HTTP_400_BAD_REQUEST)
-     
-#     stages = get_stages_by_pipeline(pipelineId)
-#     # print(stages)
-#     if stages is None or not stages['stages_list'] or 'pipelineName' not in stages:
-#         return Response({"error": "Error fetching stages from pipeline or wrong pipelineId"}, status=status.HTTP_404_NOT_FOUND)
-    
-#     data = {"stages":{},"counts":{}}
-#     for stage in stages['stages_list']:
-#         data['stages'][stage['name']] = []
-#         data['counts'][stage['name']] = 0
-
-    
-#     # search for opportunities with search and pipelineId query
-#     opportunities = search_opp(pipelineId,search,stage=None)
-
-#     if opportunities is None:
-#         return Response({"error": "Error fetching opportunities from pipeline"}, status=status.HTTP_404_NOT_FOUND)
-    
- 
-#     print(f"Total opportunities {len(opportunities)}")
-#     data_limit = False
-#     opp_stage_name = ""
-#     for opportunity in opportunities:
-#         opp_data = {}
-#         for stage in stages['stages_list']:
-#             if stage['stage_id'] == opportunity['pipelineStageId']:
-#                 opp_stage_name = stage['name']
-#         # print(opp_stage_name)
-        
-#         if data_limit is False:
-#             opp_data['id'] = opportunity['id']
-#             opp_data['name'] = opportunity['name']
-#             opp_data['contactName'] = opportunity['contact']['name']
-#             opp_data['source'] = opportunity['source'] if 'source' in opportunity else None
-#             opp_data['monetaryValue'] = opportunity['monetaryValue'] if 'monetaryValue' in opportunity else 0
-#             opp_data['pipelineStage'] = opp_stage_name
-#             opp_data['pipelineName'] = stages['pipelineName']
-#             opp_data['opportunityStage'] = None
-#             opp_data['closingDueDate'] = None
-
-#             if opportunity['customFields'] != []:
-#                 for field in opportunity['customFields']:
-#                     if field['id'] == "Bfnik1BkCUNhvDPWJrvI":
-#                         opp_data['opportunityStage'] = field['fieldValueString']
-
-#                     if field['id'] == "TQXTPRZqpXKMy9aaP42A":
-#                         date_str = datetime.fromtimestamp(field['fieldValueDate']/1000)
-#                         opp_data['closingDueDate'] = date_str.date()
-            
-        
-#         if opp_data['opportunityStage'] is None:
-#             pass
-#         else:
-#             data['counts'][opp_stage_name] += 1
-#             if len(data['stages'][opp_stage_name]) < 10:
-#                 # print(opp_data)
-#                 data['stages'][opp_stage_name].append(opp_data)
-            
-#         all_stages_limit = False
-#         for stage in stages['stages_list']:
-#             if len(data['stages'][stage['name']]) < 10:
-#                 all_stages_limit = True
-
-#         if not all_stages_limit:
-#             data_limit = True
-                
-#     return Response({"data":data},status=status.HTTP_200_OK)
-
-# @api_view(['GET'])
-# def opp_list_by_stage(request):
-
-#     search = request.GET.get('searchId',None)
-#     limit = request.GET.get('limit',10)
-#     offset = request.GET.get('offset',0)
-#     received_stage = request.GET.get('stage')
-#     pipelineId = request.GET.get('pipelineId')
-
-#     if not received_stage or not pipelineId:
-#         return Response({"error": "Missing 'stage' or 'pipelineId' parameter"}, status=status.HTTP_400_BAD_REQUEST)
-    
-#     offset = int(offset)
-#     limit = int(limit)
-#     stages = get_stages_by_pipeline(pipelineId)
-#     # print(stages)
-
-#     if stages is None or not stages['stages_list'] or 'pipelineName' not in stages:
-#         return Response({"error": "Error fetching stages from pipeline or wrong pipelineId or wrong stage"}, status=status.HTTP_404_NOT_FOUND)
-    
-#     pipelineName = stages['pipelineName']
-#     pipelineStageId = ""
-#     for stage in stages['stages_list']:
-#         if stage['name'] == received_stage:
-#             pipelineStageId = stage['stage_id']
-
-#     if pipelineStageId == "":
-#         return Response({"message":"wrong stage name"},status=status.HTTP_404_NOT_FOUND)  
-
-
-#     data = []
-
-    
-#     opportunities = search_opp(pipelineId,search,pipelineStageId)
-
-#     if opportunities is None:
-#         return Response({"error": "Error fetching opportunities from pipeline"}, status=status.HTTP_404_NOT_FOUND)
-
-
-#     needed_opportunities = [o for o in opportunities if o['customFields'] for f in o['customFields']  if f['id'] ==  "Bfnik1BkCUNhvDPWJrvI"]
-    
-    
-#     # print(offset)
-#     count=0
-#     not_count = 0
-#     print("----------------------------------------------------------------------")
-#     for opportunity in needed_opportunities[offset:]:
-#         opp_data = {}
-        
-#         opp_data['id'] = opportunity['id']
-#         opp_data['name'] = opportunity['name']
-#         opp_data['contactName'] = opportunity['contact']['name']
-#         opp_data['source'] = opportunity['source'] if 'source' in opportunity else None
-#         opp_data['monetaryValue'] = opportunity['monetaryValue'] if 'monetaryValue' in opportunity else 0
-#         opp_data['pipelineStage'] = received_stage
-#         opp_data['pipelineName'] = pipelineName
-#         opp_data['opportunityStage'] = None
-#         opp_data['closingDueDate'] = None
-
-#         if opportunity['customFields'] != []:
-#             for field in opportunity['customFields']:
-#                 if field['id'] == "Bfnik1BkCUNhvDPWJrvI":
-#                     opp_data['opportunityStage'] = field['fieldValueString']
-
-#                 if field['id'] == "TQXTPRZqpXKMy9aaP42A":
-#                     date_str = datetime.fromtimestamp(field['fieldValueDate']/1000)
-#                     opp_data['closingDueDate'] = date_str.date()
-#         # print(opp_data['opportunityStage'])
-#         if opp_data['opportunityStage'] is None:
-#             print(opportunity['id'])
-#             not_count+=1
-#             # print(f"not added to list is {not_count}")
-#         else:
-#             count+=1
-#             # print(count)
-#             if len(data) < limit:
-#                 data.append(opp_data)
-#             else:
-#                 break
-
-#     return Response({received_stage:data},status=status.HTTP_200_OK)
-
-
-    
-
-@api_view(['GET'])
-def opp_by_name(request):
-    opp_name = request.GET.get('opportunityName')
-
-    if not opp_name:
-      return Response({"error": "Missing 'opportunityName' parameter"}, status=status.HTTP_400_BAD_REQUEST)
-    
-    opportunities = search_opp(opp_name)
-
-    if opportunities is None:
-        return Response({"error": "Error fetching opportunities from location"}, status=status.HTTP_404_NOT_FOUND)
-    
-    opportunities_with_name = []
-    for opportunity in opportunities:
-        opp_data = {}
-        if opp_name.lower() in opportunity['name'].lower():
-            opp_data['id'] = opportunity['id']
-            opp_data['name'] = opportunity['name']
-            opp_data['contactName'] = opportunity['contact']['name']
-            opp_data['source'] = opportunity['source'] if 'source' in opportunity else None
-            opp_data['monetaryValue'] = opportunity['monetaryValue'] if 'monetaryValue' in opportunity else 0
-            opp_data['opportunityStage'] = None
-            opp_data['closingDueDate'] = None
-
-            if 'customFields' in opportunity and opportunity['customFields'] != []:
-                for field in opportunity['customFields']:
-                    if field['id'] == "Bfnik1BkCUNhvDPWJrvI":
-                        opp_data['opportunityStage'] = field['fieldValueString']
-
-                    if field['id'] == "TQXTPRZqpXKMy9aaP42A":
-                        date_str = datetime.fromtimestamp(field['fieldValueDate']/1000)
-                        opp_data['closingDueDate'] = date_str.date()
-
-
-            pipeline_details = get_pipeline_name(opportunity['pipelineId'],opportunity['pipelineStageId'])
-            if pipeline_details:
-                opp_data['pipelineStage'] = pipeline_details['stage']
-                opp_data['pipelineName'] = pipeline_details['pipeline']
-
-            opportunities_with_name.append(opp_data)
-
-    return Response({"opportunities":opportunities_with_name},status=200)
-       
-
-def get_pipeline_name(id,stage):
-    url = "https://services.leadconnectorhq.com/opportunities/pipelines"
-
-    querystring = {"locationId":"NqyhE9rC0Op4IlSj2IIZ"}
-    
-
-    token = check_and_refresh_token("NqyhE9rC0Op4IlSj2IIZ")
-    headers = {
-        "Authorization": f"Bearer {token}",
-        "Version": "2021-07-28",
-        "Accept": "application/json"
-    }
-
-    response = requests.get(url, headers=headers, params=querystring)
-    
-    data = {}
-    if response.status_code == 200:
-        # print(response.json())
-        res = response.json()['pipelines']
-        for each_res in res:
-            if each_res['id'] == id:
-                data['pipeline'] = each_res['name']
-                for st in  each_res['stages']:
-                    if st['id'] == stage:
-                        data['stage'] = st['name']
-                    
-                return data
-    else:
-        print("error fetching pipelines")
-        return False
-    
 
 def search_opp(search):
     url = f"https://services.leadconnectorhq.com/opportunities/search"
@@ -347,84 +83,157 @@ def search_opp(search):
     return opportunities
 
 
-# def get_stages_by_pipeline(id):
-#     url = "https://services.leadconnectorhq.com/opportunities/pipelines"
+def get_opp(id):
+    url = f"https://services.leadconnectorhq.com/opportunities/{id}"
+    token = check_and_refresh_token("NqyhE9rC0Op4IlSj2IIZ")
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Version": "2021-07-28",
+        "Accept": "application/json"
+    }
 
-#     querystring = {"locationId":"NqyhE9rC0Op4IlSj2IIZ"}
+    response = requests.get(url, headers=headers)
+
+    if response.status_code == 200:
+        return response.json()['opportunity']
+    
+    else:
+        return None
     
 
-#     token = check_and_refresh_token("NqyhE9rC0Op4IlSj2IIZ")
-#     headers = {
-#         "Authorization": f"Bearer {token}",
-#         "Version": "2021-07-28",
-#         "Accept": "application/json"
-#     }
 
-#     max_retries = 5
-#     retry_delay = 10  
-#     data = {"stages_list":[]}
-#     for attempt in range(max_retries):
-#         response = requests.get(url, headers=headers, params=querystring)
-#         if response.status_code == 200:
-#             # print(response.json())
-#             res = response.json()['pipelines']
-#             for pipeline in res:
-#                 if pipeline['id']==id:
-#                     data['pipelineName'] = pipeline['name']
-#                     for stage in pipeline['stages']:
-#                         data['stages_list'].append({"stage_id":stage['id'],"name":stage['name']})
+@api_view(['GET'])
+def opp_by_name(request):
+    opp_name = request.GET.get('opportunityName')
 
-#             # print(data)
-#             return data
-#         elif response.status_code == 429:
-#             print(f"Rate limit exceeded. Retrying in {retry_delay} seconds... (Attempt {attempt + 1}/{max_retries})")
-#             time.sleep(retry_delay)
-#             retry_delay *= 2 
-#         else:
-#             print(f"Unexpected error: {response.status_code}")
-#             try:
-#                 print(response.json())
-#             except ValueError:
-#                 print("Response content is not valid JSON")
-#                 time.sleep(retry_delay)
-#                 retry_delay *= 2
-#             print(response.headers)
-
+    if not opp_name:
+      return Response({"error": "Missing 'opportunityName' parameter"}, status=status.HTTP_400_BAD_REQUEST)
     
-#     return None
+    opportunities = search_opp(opp_name)
 
-def check_and_refresh_token(location_id): 
-    token = get_object_or_404(AccessToken, location_id=location_id) 
-    if token.expiry <= timezone.now()-timedelta(minutes=5):
-        print("refreshing access token since expired")
-               
-        #  refresh access token when expired
-        url ="https://services.leadconnectorhq.com/oauth/token"  
-        
-        payload = {
-            "client_id": os.getenv('CLIENT_ID'),
-            "client_secret":  os.getenv('CLIENT_SECRET'),
-            "grant_type": "refresh_token",
-            "refresh_token": token.refresh,
-            "user_type": "Location",
+    if opportunities is None:
+        return Response({"error": "Error fetching opportunities from location"}, status=status.HTTP_404_NOT_FOUND)
+    
+    opportunities_with_name = []
+    for opportunity in opportunities:
+        opp_data = {}
+        if opp_name.lower() in opportunity['name'].lower():
+            opp_data['id'] = opportunity['id']
+            opp_data['name'] = opportunity['name']
+            opp_data['contactName'] = opportunity['contact']['name']
+            opp_data['source'] = opportunity['source'] if 'source' in opportunity else None
+            opp_data['monetaryValue'] = opportunity['monetaryValue'] if 'monetaryValue' in opportunity else 0
+            opp_data['opportunityStage'] = None
+            opp_data['closingDueDate'] = None
+
+            if 'customFields' in opportunity and opportunity['customFields'] != []:
+                for field in opportunity['customFields']:
+                    if field['id'] == "Bfnik1BkCUNhvDPWJrvI":
+                        opp_data['opportunityStage'] = field['fieldValueString']
+
+                    if field['id'] == "TQXTPRZqpXKMy9aaP42A":
+                        date_str = datetime.fromtimestamp(field['fieldValueDate']/1000)
+                        opp_data['closingDueDate'] = date_str.date()
+
+
+            pipeline_details = get_pipeline_name(opportunity['pipelineId'],opportunity['pipelineStageId'])
+            if pipeline_details:
+                opp_data['pipelineStage'] = pipeline_details['stage']
+                opp_data['pipelineName'] = pipeline_details['pipeline']
+
+            opportunities_with_name.append(opp_data)
+
+    return Response({"opportunities":opportunities_with_name},status=200)
+       
+
+class OpportunitiesWebhook(APIView):
+    def post(self,request):
+        print("opportunities webhook called")
+        loan_pipelines = {
+            "iET1Mx1H0C2mN2ExvI7t":"Loan Officer - Adam",
+            "3GUjztY5QxawecchRTEQ":"Loan Officer - Dan",
+            "sgiIIXS9ccUA32HuVzyp":"Loan Officer - Dawn",
+            "VgzPhjLCDIrqfc27nuke":"Loan Officer - Liz",
+            "JvD2NiqvELeBQwJmegAG":"Loan Officer - Nicole",
+            "634NUynY3fM1vIPmZIDR":"Loan Officer- Kevin",
+            "kk0EeBcUijsZJG1vJyn9":"Processing"
+        }
+        data = request.data
+
+        req_type = data['type']
+
+        if req_type == "OpportunityCreate" or req_type == "OpportunityUpdate" or req_type == "OpportunityAssignedToUpdate" or req_type == "OpportunityStageUpdate":
+            # create or update existing tables rows
+            print("req for opp create or update received")
+            if data['pipelineId'] in loan_pipelines:
+                print(f"updating totalopportunities table for opp {data['id']}")
+                total_opp_instance, created= TotalOpportunties.objects.get_or_create(opp_id=data['id'])
             
-        }
+                total_opp_instance.pipeline_id = data['pipelineId']
+                total_opp_instance.stage_id = data['pipelineStageId']
+                
+                pipeline_details = get_pipeline_name(data['pipelineId'],data['pipelineStageId'])
+                if pipeline_details:
+                    total_opp_instance.stage_name = pipeline_details['stage']
+                    total_opp_instance.pipeline_name = pipeline_details['pipeline']
 
-        headers = {
-            "Content-Type": "application/x-www-form-urlencoded",
-            "Accept": "application/json"
-        }
+                total_opp_instance.save()
+            
 
-        response = requests.post(url, data=payload, headers=headers)
+            if data['pipelineId'] == "kk0EeBcUijsZJG1vJyn9":
+                print(f"updating processingopportunities table for opp {data['id']}")
+                opp_instance, created = ProcessingOpportunities.objects.get_or_create(opp_id=data['id'])
+                
+                opp_instance.opp_name = data['name']
+                opp_instance.pipeline_id = data['pipelineId']
+                opp_instance.stage_id = data['pipelineStageId']
+                opp_instance.assigned_user_id = data['assignedTo']
+                opp_instance.monetary_value = data['monetaryValue']
+                
+                pipeline_details = get_pipeline_name(data['pipelineId'],data['pipelineStageId'])
+                if pipeline_details:
+                    opp_instance.stage_name = pipeline_details['stage']
+                    opp_instance.pipeline_name = pipeline_details['pipeline']
+                
+                assigned_name = get_assigned_user(data['assignedTo'])
+                if assigned_name:
+                    opp_instance.assigned_user_name = assigned_name
+                
+                get_opp_details = get_opp(data['id'])
+                if get_opp_details:
 
-        print(response.json())
-        token = get_object_or_404(AccessToken, location_id=location_id)
-        token.access = response.json()['access_token']
-        token.refresh = response.json()['refresh_token']
-        token.expiry = timezone.now() + timedelta(seconds=response.json()['expires_in'])
-        token.save()
+                    opp_instance.actual_closed_date = get_opp_details['lastStageChangeAt']
 
-    return token.access
+                    if 'customFields' in get_opp_details and get_opp_details['customFields'] != []:
+                        for field in get_opp_details['customFields']:
+                            if field['id'] == "5hOAqmsYZs4U9e8K4EsJ":
+                                opp_instance.loan_type = field['fieldValueArray'][0]
+
+                            if field['id'] == "UE5SWIOEeAjs8SGnNAUr":
+                                opp_instance.explanation = field['fieldValueString']
+
+                            if field['id'] == "tF6ULs19sWBsNp23jjEF":
+                                opp_instance.how_many_times_lender_change = field['fieldValueString']
+
+                            if field['id'] == "TQXTPRZqpXKMy9aaP42A":
+                                date_str = datetime.fromtimestamp(field['fieldValueDate']/1000)
+                                opp_instance.close_due_date = date_str.date()
+
+                opp_instance.save()
+            print("succesfully updated db")
+            return Response({"message":"succesfully updated db"},status=200)
+        
+        if request.data['type'] == "OpportunityDelete":
+            print("opp deleted req received")
+            pro_opp_instance = get_object_or_404(ProcessingOpportunities,opp_id=request.data['id'])
+            total_opp_instance = get_object_or_404(TotalOpportunties,opp_id=request.data['id'])
+
+            pro_opp_instance.delete()
+            total_opp_instance.delete()
+             
+            print("succesfully deleted opportunities from db")
+            return Response({"message":"succesfully deleted opportunities from db"},status=200)
+
 
 
 #  create access token
@@ -440,6 +249,7 @@ class CreateAccessToken(APIView):
             access_token_instance = AccessToken.objects.get(location_id=user_location_id)
             if access_token_instance:  
                 print("access token exists")
+                fetch_opportunities.delay()
                 return Response({'message': "Acces token already exists"},status=200)
             
         except AccessToken.DoesNotExist:
