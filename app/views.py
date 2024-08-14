@@ -148,10 +148,8 @@ def opp_by_name(request):
 
     return Response({"opportunities":opportunities_with_name},status=200)
        
-
-class OpportunitiesWebhook(APIView):
-    @csrf_exempt
-    def post(self,request):
+@api_view(['POST'])
+def opportunities_webhook(request):
         print(request.headers)
         print("opportunities webhook called")
         if not AccessToken.objects.filter(location_id=request.data['locationId']).exists():
