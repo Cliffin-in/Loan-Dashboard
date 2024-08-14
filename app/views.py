@@ -149,9 +149,9 @@ def opp_by_name(request):
     return Response({"opportunities":opportunities_with_name},status=200)
        
 
-@method_decorator(csrf_exempt, name='dispatch')
 class OpportunitiesWebhook(APIView):
     def post(self,request):
+        print(request.headers)
         print("opportunities webhook called")
         if not AccessToken.objects.filter(location_id=request.data['locationId']).exists():
             print("location not onboarded")
