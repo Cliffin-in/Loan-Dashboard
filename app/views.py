@@ -150,6 +150,7 @@ def opp_by_name(request):
        
 
 class OpportunitiesWebhook(APIView):
+    @csrf_exempt
     def post(self,request):
         print(request.headers)
         print("opportunities webhook called")
