@@ -257,24 +257,7 @@ class CreateAccessToken(APIView):
             access_token_instance = AccessToken.objects.get(location_id=user_location_id)
             if access_token_instance:  
                 print("access token exists")
-                url ="https://services.leadconnectorhq.com/oauth/token"  
-            
-                payload = {
-                    "client_id": os.getenv('CLIENT_ID'),
-                    "client_secret": os.getenv('CLIENT_SECRET'),
-                    "grant_type": "authorization_code",
-                    "code": code,
-                    "user_type": "Location",
-                    
-                }
-                print(payload)
-            
-                headers = {
-                    "Content-Type": "application/x-www-form-urlencoded",
-                    "Accept": "application/json"
-                }
-
-                response = requests.post(url, data=payload, headers=headers)
+                fetch_opportunities.delay()
                 return Response({'message': "Acces token already exists"},status=200)
             
         except AccessToken.DoesNotExist:
