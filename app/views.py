@@ -191,7 +191,7 @@ def opportunities_webhook(request):
                 if total_created:
                     print("created opp in total opportunities")
                 else:
-                    print("updated opp in processing table")
+                    print("updated opp in total opportunities")
             
 
             if data['pipelineId'] == "kk0EeBcUijsZJG1vJyn9":
@@ -235,7 +235,7 @@ def opportunities_webhook(request):
                 opp_instance.save()
 
                 if created:
-                    print("created opp in total table")
+                    print("created opp in processing table")
                 else:
                     print("updated opp processing table")
             print("succesfully updated db")
