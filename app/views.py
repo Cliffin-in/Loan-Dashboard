@@ -216,16 +216,16 @@ def opportunities_webhook(request):
                     if 'customFields' in get_opp_details and get_opp_details['customFields'] != []:
                         for field in get_opp_details['customFields']:
                             if field['id'] == "5hOAqmsYZs4U9e8K4EsJ":
-                                opp_instance.loan_type = field['fieldValueArray'][0]
+                                opp_instance.loan_type = field['fieldValue'][0]
 
                             if field['id'] == "UE5SWIOEeAjs8SGnNAUr":
-                                opp_instance.explanation = field['fieldValueString']
+                                opp_instance.explanation = field['fieldValue']
 
                             if field['id'] == "tF6ULs19sWBsNp23jjEF":
-                                opp_instance.how_many_times_lender_change = field['fieldValueString']
+                                opp_instance.how_many_times_lender_change = field['fieldValue']
 
                             if field['id'] == "TQXTPRZqpXKMy9aaP42A":
-                                date_str = datetime.fromtimestamp(field['fieldValueDate']/1000)
+                                date_str = datetime.fromtimestamp(field['fieldValue']/1000)
                                 opp_instance.close_due_date = date_str.date()
 
                 opp_instance.save()
