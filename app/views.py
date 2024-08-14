@@ -162,7 +162,7 @@ class OpportunitiesWebhook(APIView):
 
         req_type = data['type']
 
-        if req_type == "OpportunityCreate" or req_type == "OpportunityUpdate" or req_type == "OpportunityAssignedToUpdate" or req_type == "OpportunityStageUpdate":
+        if req_type == "OpportunityCreate" or req_type == "OpportunityUpdate" or req_type == "OpportunityAssignedToUpdate" or req_type == "OpportunityStageUpdate" or req_type == "OpportunityMonetaryValueUpdate":
             # create or update existing tables rows
             print("req for opp create or update received")
             if data['pipelineId'] in loan_pipelines:
