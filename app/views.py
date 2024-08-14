@@ -149,6 +149,11 @@ def opp_by_name(request):
 class OpportunitiesWebhook(APIView):
     def post(self,request):
         print("opportunities webhook called")
+        if not AccessToken.objects.filter(location_id=request.data['locationId']).exists():
+            print("location not onboarded")
+            return Response({"message":"location not onboarded"},status=400)
+   
+
         loan_pipelines = {
             "iET1Mx1H0C2mN2ExvI7t":"Loan Officer - Adam",
             "3GUjztY5QxawecchRTEQ":"Loan Officer - Dan",
@@ -234,7 +239,7 @@ class OpportunitiesWebhook(APIView):
             print("succesfully deleted opportunities from db")
             return Response({"message":"succesfully deleted opportunities from db"},status=200)
 
-
+        return Response({"message":"bad request"},status=400)
 
 #  create access token
 class CreateAccessToken(APIView):
