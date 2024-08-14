@@ -196,8 +196,8 @@ def opportunities_webhook(request):
                 opp_instance.opp_name = data['name']
                 opp_instance.pipeline_id = data['pipelineId']
                 opp_instance.stage_id = data['pipelineStageId']
-                opp_instance.assigned_user_id = data['assignedTo']
-                opp_instance.monetary_value = data['monetaryValue']
+                opp_instance.assigned_user_id = data.get('assignedTo')
+                opp_instance.monetary_value = data.get('monetaryValue')
                 
                 pipeline_details = get_pipeline_name(data['pipelineId'],data['pipelineStageId'])
                 if pipeline_details:
