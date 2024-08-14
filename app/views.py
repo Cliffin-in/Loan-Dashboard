@@ -14,6 +14,8 @@ import time
 from .tasks import fetch_opportunities
 from .utils import get_assigned_user,get_pipeline_name,check_and_refresh_token
 from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
+
 load_dotenv()
 
 
@@ -147,8 +149,8 @@ def opp_by_name(request):
     return Response({"opportunities":opportunities_with_name},status=200)
        
 
+@method_decorator(csrf_exempt, name='dispatch')
 class OpportunitiesWebhook(APIView):
-    @csrf_exempt
     def post(self,request):
         print("opportunities webhook called")
         if not AccessToken.objects.filter(location_id=request.data['locationId']).exists():
