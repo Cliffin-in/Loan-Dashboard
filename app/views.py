@@ -250,6 +250,8 @@ def opportunities_webhook(request):
         
         if request.data['type'] == "OpportunityDelete":
             print("opp deleted req received")
+            pro_opp_instance = None
+            total_opp_instance = None
 
             try:
                 pro_opp_instance = ProcessingOpportunities.objects.get(opp_id=request.data['id'])
