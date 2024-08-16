@@ -20,7 +20,6 @@ from .cron_task import cron_task
 load_dotenv()
 
 
-cron_task()
 
 def search_opp(search):
     url = f"https://services.leadconnectorhq.com/opportunities/search"
