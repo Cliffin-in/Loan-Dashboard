@@ -176,7 +176,7 @@ def opportunities_webhook(request):
             print("req for opp create or update received")
             if data['pipelineId'] in loan_pipelines:
                 print(f"updating totalopportunities table for opp {data['id']}")
-                total_opp_instance, total_created= TotalOpportunties.objects.get_or_create(opp_id=data['id'],exists_in_ghl=True)
+                total_opp_instance, total_created= TotalOpportunties.objects.get_or_create(opp_id=data['id'])
                 print(total_created if total_created else total_opp_instance)
             
                 total_opp_instance.pipeline_id = data['pipelineId']
@@ -197,7 +197,7 @@ def opportunities_webhook(request):
 
             if data['pipelineId'] == "kk0EeBcUijsZJG1vJyn9":
                 print(f"updating processingopportunities table for opp {data['id']}")
-                opp_instance, created = ProcessingOpportunities.objects.get_or_create(opp_id=data['id'],exists_in_ghl=True)
+                opp_instance, created = ProcessingOpportunities.objects.get_or_create(opp_id=data['id'])
                 
                 opp_instance.opp_name = data['name']
                 opp_instance.pipeline_id = data['pipelineId']
