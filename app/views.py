@@ -255,10 +255,11 @@ def opportunities_webhook(request):
 
             try:
                 pro_opp_instance = ProcessingOpportunities.objects.get(opp_id=request.data['id'])
-                total_opp_instance = TotalOpportunties.objects.get(opp_id=request.data['id'])
-            
             except ProcessingOpportunities.DoesNotExist:
                 pro_opp_instance = None
+            
+            try:
+                total_opp_instance = TotalOpportunties.objects.get(opp_id=request.data['id'])
             except TotalOpportunties.DoesNotExist:
                 total_opp_instance = None
 
