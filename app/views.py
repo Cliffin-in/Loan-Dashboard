@@ -19,8 +19,8 @@ import pytz
 from .cron_task import cron_task
 load_dotenv()
 
-cron_task()
 
+cron_task()
 
 def search_opp(search):
     url = f"https://services.leadconnectorhq.com/opportunities/search"
@@ -251,11 +251,20 @@ def opportunities_webhook(request):
         
         if request.data['type'] == "OpportunityDelete":
             print("opp deleted req received")
-            pro_opp_instance = get_object_or_404(ProcessingOpportunities,opp_id=request.data['id'])
-            total_opp_instance = get_object_or_404(TotalOpportunties,opp_id=request.data['id'])
 
-            pro_opp_instance.delete()
-            total_opp_instance.delete()
+            try:
+                pro_opp_instance = ProcessingOpportunities.objects.get(opp_id=request.data['id'])
+                total_opp_instance = TotalOpportunties.objects.get(opp_id=request.data['id'])
+            
+            except ProcessingOpportunities.DoesNotExist:
+                pro_opp_instance = None
+            except TotalOpportunties.DoesNotExist:
+                total_opp_instance = None
+
+            if pro_opp_instance:
+                pro_opp_instance.delete()
+            if total_opp_instance:
+                total_opp_instance.delete()
              
             print("succesfully deleted opportunities from db")
             return Response({"message":"succesfully deleted opportunities from db"},status=200)
