@@ -29,6 +29,7 @@ class ProcessingOpportunities(models.Model):
     assigned_user_name = models.TextField()
     explanation = models.TextField()
     how_many_times_lender_change = models.TextField()
+    exists_in_ghl = models.BooleanField(default=False)
     
 class TotalOpportunties(models.Model):
     opp_id = models.CharField(unique=True,max_length=255)
@@ -36,4 +37,4 @@ class TotalOpportunties(models.Model):
     pipeline_name = models.TextField()
     stage_id = models.TextField()
     stage_name = models.TextField()
-    
+    exists_in_ghl = models.BooleanField(default=False)

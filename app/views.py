@@ -16,9 +16,10 @@ from .utils import get_assigned_user,get_pipeline_name,check_and_refresh_token
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 import pytz
+from .cron_task import cron_task
 load_dotenv()
 
-
+cron_task()
 
 
 def search_opp(search):
@@ -176,7 +177,8 @@ def opportunities_webhook(request):
             print("req for opp create or update received")
             if data['pipelineId'] in loan_pipelines:
                 print(f"updating totalopportunities table for opp {data['id']}")
-                total_opp_instance, total_created= TotalOpportunties.objects.get_or_create(opp_id=data['id'])
+                total_opp_instance, total_created= TotalOpportunties.objects.get_or_create(opp_id=data['id'],exists_in_ghl=True)
+                print(total_created if total_created else total_opp_instance)
             
                 total_opp_instance.pipeline_id = data['pipelineId']
                 total_opp_instance.stage_id = data['pipelineStageId']
@@ -196,7 +198,7 @@ def opportunities_webhook(request):
 
             if data['pipelineId'] == "kk0EeBcUijsZJG1vJyn9":
                 print(f"updating processingopportunities table for opp {data['id']}")
-                opp_instance, created = ProcessingOpportunities.objects.get_or_create(opp_id=data['id'])
+                opp_instance, created = ProcessingOpportunities.objects.get_or_create(opp_id=data['id'],exists_in_ghl=True)
                 
                 opp_instance.opp_name = data['name']
                 opp_instance.pipeline_id = data['pipelineId']
@@ -273,24 +275,7 @@ class CreateAccessToken(APIView):
             access_token_instance = AccessToken.objects.get(location_id=user_location_id)
             if access_token_instance:  
                 print("access token exists")
-                url ="https://services.leadconnectorhq.com/oauth/token"  
-            
-                payload = {
-                    "client_id": os.getenv('CLIENT_ID'),
-                    "client_secret": os.getenv('CLIENT_SECRET'),
-                    "grant_type": "authorization_code",
-                    "code": code,
-                    "user_type": "Location",
-                    
-                }
-                print(payload)
-            
-                headers = {
-                    "Content-Type": "application/x-www-form-urlencoded",
-                    "Accept": "application/json"
-                }
-
-                response = requests.post(url, data=payload, headers=headers)
+                fetch_opportunities.delay()
                 return Response({'message': "Acces token already exists"},status=200)
             
         except AccessToken.DoesNotExist:
