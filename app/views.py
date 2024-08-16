@@ -264,8 +264,12 @@ def opportunities_webhook(request):
 
             if pro_opp_instance:
                 pro_opp_instance.delete()
+                print("deleted processing instance")
+
             if total_opp_instance:
                 total_opp_instance.delete()
+                print("deleted total instance")
+
              
             print("succesfully deleted opportunities from db")
             return Response({"message":"succesfully deleted opportunities from db"},status=200)
