@@ -239,6 +239,9 @@ def opportunities_webhook(request):
                             if field['id'] == "TQXTPRZqpXKMy9aaP42A":
                                 opp_instance.close_due_date = field['fieldValue']
 
+                            if field['id'] == "tS1UTzx50RhppuQMJTVs":
+                                opp_instance.original_close_due_date = field['fieldValue']
+
                 opp_instance.save()
 
                 if created:

@@ -81,6 +81,10 @@ def fetch_opportunities(self, *args):
                         date_str = datetime.fromtimestamp(field['fieldValueDate']/1000)
                         opp_instance.close_due_date = date_str.date()
 
+                    if field['id'] == "tS1UTzx50RhppuQMJTVs":
+                        original_date_str = datetime.fromtimestamp(field['fieldValueDate']/1000)
+                        opp_instance.original_close_due_date = original_date_str.date()
+
             opp_instance.save()
 
     return "succesfully saved to db"

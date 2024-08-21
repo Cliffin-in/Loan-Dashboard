@@ -24,6 +24,7 @@ class ProcessingOpportunities(models.Model):
     monetary_value = models.TextField()
     close_due_date = models.TextField()
     actual_closed_date = models.TextField()
+    original_close_due_date = models.TextField()
     loan_type = models.TextField()
     assigned_user_id = models.TextField()
     assigned_user_name = models.TextField()
