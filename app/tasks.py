@@ -48,6 +48,8 @@ def fetch_opportunities(self, *args):
             opp_instance.assigned_user_id = opp['assignedTo']
             opp_instance.monetary_value = opp['monetaryValue']
 
+            opp_instance.original_close_due_date = None
+
             location_timezone = "America/New_York"
             target_timezone = pytz.timezone(location_timezone)
             date_str = opp['lastStageChangeAt']

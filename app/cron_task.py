@@ -27,11 +27,15 @@ def cron_task():
             j.save()
             print(f"updated opp {j.opp_id} in processing table")
 
-    
+    opp_to_delete = TotalOpportunties.objects.filter(exists_in_ghl=False)
+
+    for r in opp_to_delete:
+        print(r.opp_id)
+
     # deleting those opps which are not in ghl
-    deleted_count = delete_items_not_in_ghl()
-    print(deleted_count)
-    return {"message":"Updated db succesfully","deleted count":deleted_count}
+    # deleted_count = delete_items_not_in_ghl()
+    # print(deleted_count)
+    # return {"message":"Updated db succesfully","deleted count":deleted_count}
 
 def delete_items_not_in_ghl():
     print("delete fun call")

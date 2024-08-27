@@ -20,7 +20,6 @@ from .cron_task import cron_task
 load_dotenv()
 
 
-
 def search_opp(search):
     url = f"https://services.leadconnectorhq.com/opportunities/search"
 
@@ -204,6 +203,10 @@ def opportunities_webhook(request):
                 opp_instance.stage_id = data['pipelineStageId']
                 opp_instance.assigned_user_id = data.get('assignedTo')
                 opp_instance.monetary_value = data.get('monetaryValue',0)
+                opp_instance.close_due_date = None
+                opp_instance.original_close_due_date = None
+                opp_instance.actual_closed_date = None
+
                 
                 pipeline_details = get_pipeline_name(data['pipelineId'],data['pipelineStageId'])
                 if pipeline_details:
